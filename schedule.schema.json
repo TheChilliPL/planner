@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$id": "https://thechilli.dev/planner/schedule.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "pattern": "schedule.schema.json$"
+    },
+    "weeks": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 5,
+        "maxItems": 5,
+        "items": {
+          "$ref": "#/$defs/date"
+        }
+      },
+      "description": "Weeks definition. Contains of multiple arrays, one array per week. Each of these has 5 days defined."
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the subject"
+          }
+        }
+      },
+      "description": "Defines the subjects. The key is considered to be the subject ID."
+    },
+    "teachers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the teacher, including any titles."
+          }
+        }
+      },
+      "description": "Defines the teachers. The key is considered to be the teacher ID."
+    },
+    "schedule": {
+      "type": "array",
+      "description": "Defines the actual classes happening.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Subject ID. Must match one of the keys in the 'subjects' property."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "lecture",
+              "lab",
+              "exercise",
+              "seminar",
+              "pe",
+              "languages",
+              "project"
+            ],
+            "description": "The type of the class."
+          },
+          "day": {
+            "$ref": "#/$defs/weekday",
+            "description": "The day of the week when the class happens."
+          },
+          "time": {
+            "$ref": "#/$defs/timePeriod",
+            "description": "The time period when the class happens."
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "building": {
+                    "type": "string"
+                  },
+                  "room": {
+                    "type": "string"
+                  }
+                },
+                "required": ["building", "room"]
+              }
+            ],
+            "description": "The location where the class happens."
+          },
+          "teachers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The IDs of the teachers that conduct the class. Each entry must match one of the keys in the 'teachers' property."
+          },
+          "weeks": {
+            "type": "object",
+            "description": "Defines which weeks the class happens in. If omitted, the class happens every week. If multiple properties are provided, all must be fulfilled for the class to appear.",
+            "properties": {
+              "from": {
+                "type": "number",
+                "default": 1,
+                "description": "The first week (1-based) when the class happens (inclusive).",
+                "minimum": 1
+              },
+              "to": {
+                "type": "number",
+                "default": 15,
+                "description": "The last week (1-based) when the class happens (inclusive).",
+                "minimum": 1
+              },
+              "parity": {
+                "type": "string",
+                "enum": ["all", "odd", "even"],
+                "default": "all",
+                "description": "Whether the class happens every week, only on odd weeks, or only on even weeks."
+              }
+            }
+          }
+        },
+        "required": ["subject", "type", "day", "time"]
+      }
+    }
+  },
+  "required": ["weeks", "subjects", "schedule"],
+  "$defs": {
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "A date in the ISO format: YYYY-MM-DD."
+    },
+    "weekday": {
+      "type": "string",
+      "enum": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$"
+    },
+    "timePeriod": {
+      "type": "string",
+      "pattern": "^\\d{1,2}:\\d{2}-\\d{1,2}:\\d{2}$"
+    }
+  }
+}
