@@ -7,7 +7,7 @@ use eyre::{eyre, OptionExt};
 use log::warn;
 use serde::{de, Deserialize, Deserializer};
 use serde::de::IntoDeserializer;
-use crate::class::Class;
+use crate::calendar::class::Class;
 use crate::ical::vcalendar::VCalendar;
 use crate::ical::vevent::VEvent;
 

@@ -1,10 +1,8 @@
 use chrono::Weekday;
 use serde::Deserialize;
-use class_type::ClassType;
+use super::class_type::ClassType;
 use crate::calendar::Weeks;
-use crate::periods::NaiveTimePeriod;
-
-pub mod class_type;
+use crate::calendar::periods::NaiveTimePeriod;
 
 #[derive(Deserialize)]
 #[serde(remote = "Weekday")]

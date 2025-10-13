@@ -1,3 +1,8 @@
+pub mod class;
+pub mod class_type;
+pub mod periods;
+pub mod schedule;
+
 use std::num::NonZero;
 use serde::Deserialize;
 
@@ -84,3 +89,4 @@ mod tests {
         assert_eq!(serde_json::from_value::<Weeks>(json2).unwrap(), Default::default());
     }
 }
+

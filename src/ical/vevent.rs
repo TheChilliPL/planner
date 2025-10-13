@@ -2,7 +2,7 @@ use std::io::Write;
 use chrono::{DateTime};
 use chrono_tz::Tz;
 use crate::ical::SerializeToICal;
-use crate::timeext::TimeExt;
+use crate::time::timeext::TimeExt;
 
 pub struct VEvent {
     /// Unique identifier of the event

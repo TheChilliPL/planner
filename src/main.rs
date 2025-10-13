@@ -1,17 +1,12 @@
 use crate::ical::SerializeToICal;
-use crate::schedule::{schedule_to_ical, Schedule};
+use crate::calendar::schedule::{schedule_to_ical, Schedule};
 use clap::{Parser, Subcommand};
 use log::{debug, info, LevelFilter};
 use std::fs::File;
 use std::path::PathBuf;
 
 mod calendar;
-mod class;
-mod macros;
-mod periods;
-mod timezones;
-mod timeext;
-mod schedule;
+mod time;
 mod ical;
 
 #[derive(Parser, Debug)]
@@ -58,7 +53,7 @@ fn main() -> eyre::Result<()> {
 
             info!("Schedule: {:?}", schedule);
 
-            let timezone = timezones::try_get_local_timezone()?;
+            let timezone = crate::time::timezones::try_get_local_timezone()?;
             debug!("Using local timezone: {}", timezone);
 
             let ical = schedule_to_ical(&schedule, &timezone)?;
