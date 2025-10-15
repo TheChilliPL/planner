@@ -1,5 +1,5 @@
-use crate::ical::SerializeToICal;
 use crate::ical::vevent::VEvent;
+use crate::ical::SerializeToICal;
 
 pub struct VCalendar {
     pub prod_id: String,

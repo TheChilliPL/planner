@@ -1,8 +1,8 @@
-use std::io::Write;
-use chrono::{DateTime};
-use chrono_tz::Tz;
 use crate::ical::SerializeToICal;
 use crate::time::timeext::TimeExt;
+use chrono::DateTime;
+use chrono_tz::Tz;
+use std::io::Write;
 
 pub struct VEvent {
     /// Unique identifier of the event
@@ -44,12 +44,20 @@ impl SerializeToICal for VEvent {
 
         write!(write, "BEGIN:VEVENT\r\n")?;
         write!(write, "UID:{}\r\n", self.uid)?;
-        write!(write, "DTSTAMP{}\r\n", datetime_to_ical_string(&self.created))?;
+        write!(
+            write,
+            "DTSTAMP{}\r\n",
+            datetime_to_ical_string(&self.created)
+        )?;
         write!(write, "DTSTART{}\r\n", datetime_to_ical_string(&self.start))?;
         write!(write, "DTEND{}\r\n", datetime_to_ical_string(&self.end))?;
         write!(write, "SUMMARY:{}\r\n", self.summary.replace("\n", "\\n"))?;
         write!(write, "LOCATION:{}\r\n", self.location.replace("\n", "\\n"))?;
-        write!(write, "DESCRIPTION:{}\r\n", self.description.replace("\n", "\\n"))?;
+        write!(
+            write,
+            "DESCRIPTION:{}\r\n",
+            self.description.replace("\n", "\\n")
+        )?;
         write!(write, "END:VEVENT\r\n")?;
 
         Ok(())

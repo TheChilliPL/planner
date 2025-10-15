@@ -3,8 +3,8 @@ pub mod class_type;
 pub mod periods;
 pub mod schedule;
 
-use std::num::NonZero;
 use serde::Deserialize;
+use std::num::NonZero;
 
 #[derive(Default, Deserialize, Eq, PartialEq, Clone, Copy, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -57,17 +57,25 @@ impl Weeks {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn deserialize_parity() {
-        assert_eq!(serde_json::from_str::<WeekParity>("\"all\"").unwrap(), WeekParity::All);
-        assert_eq!(serde_json::from_str::<WeekParity>("\"even\"").unwrap(), WeekParity::Even);
-        assert_eq!(serde_json::from_str::<WeekParity>("\"odd\"").unwrap(), WeekParity::Odd);
+        assert_eq!(
+            serde_json::from_str::<WeekParity>("\"all\"").unwrap(),
+            WeekParity::All
+        );
+        assert_eq!(
+            serde_json::from_str::<WeekParity>("\"even\"").unwrap(),
+            WeekParity::Even
+        );
+        assert_eq!(
+            serde_json::from_str::<WeekParity>("\"odd\"").unwrap(),
+            WeekParity::Odd
+        );
     }
 
     #[test]
@@ -78,15 +86,20 @@ mod tests {
             "parity": "odd",
         });
 
-        assert_eq!(serde_json::from_value::<Weeks>(json1).unwrap(), Weeks {
-            from: Some(NonZero::new(5).unwrap()),
-            to: Some(NonZero::new(10).unwrap()),
-            parity: WeekParity::Odd,
-        });
+        assert_eq!(
+            serde_json::from_value::<Weeks>(json1).unwrap(),
+            Weeks {
+                from: Some(NonZero::new(5).unwrap()),
+                to: Some(NonZero::new(10).unwrap()),
+                parity: WeekParity::Odd,
+            }
+        );
 
         let json2 = json!({});
 
-        assert_eq!(serde_json::from_value::<Weeks>(json2).unwrap(), Default::default());
+        assert_eq!(
+            serde_json::from_value::<Weeks>(json2).unwrap(),
+            Default::default()
+        );
     }
 }
-

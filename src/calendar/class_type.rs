@@ -46,6 +46,9 @@ mod tests {
     fn test_deserialize() {
         let json = "\"lecture\"";
 
-        assert_eq!(serde_json::from_str::<ClassType>(json).unwrap(), ClassType::Lecture);
+        assert_eq!(
+            serde_json::from_str::<ClassType>(json).unwrap(),
+            ClassType::Lecture
+        );
     }
 }

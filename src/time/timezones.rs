@@ -22,6 +22,6 @@ pub fn try_get_local_timezone() -> Result<Tz, TryGetLocalTimezoneError> {
     }?;
 
     let timezone = get_timezone_by_name(&timezone_str);
-    
+
     timezone.ok_or_else(|| TryGetLocalTimezoneError::ChronoTzNotFound(timezone_str))
 }

@@ -390,6 +390,7 @@ dependencies = [
  "iana-time-zone",
  "log",
  "pretty_env_logger",
+ "qolor",
  "serde",
  "serde_json",
  "thiserror",
@@ -413,6 +414,11 @@ checksum = "37d3544b3f2748c54e147655edb5025752e2303145b5aefb3c3ea2c78b973bb0"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "qolor"
+version = "0.1.0"
+source = "git+https://github.com/TheChilliPL/qolor#43d59a960f28a5441af717e4111b2b116838debf"
 
 [[package]]
 name = "quote"

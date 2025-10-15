@@ -1,19 +1,20 @@
+use crate::calendar::class::Class;
+use crate::ical::vcalendar::VCalendar;
+use crate::ical::vevent::VEvent;
 use chrono::{Datelike, Local};
-use std::collections::HashMap;
-use std::num::NonZero;
 use chrono::{NaiveDate, Weekday};
 use chrono_tz::Tz;
 use eyre::{eyre, OptionExt};
 use log::warn;
-use serde::{de, Deserialize, Deserializer};
 use serde::de::IntoDeserializer;
-use crate::calendar::class::Class;
-use crate::ical::vcalendar::VCalendar;
-use crate::ical::vevent::VEvent;
+use serde::{de, Deserialize, Deserializer};
+use std::collections::HashMap;
+use std::iter;
+use std::num::NonZero;
 
 fn deserialize_date<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
 where
-    D: Deserializer<'de>
+    D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     NaiveDate::parse_from_str(&s, "%Y-%m-%d")
@@ -22,7 +23,7 @@ where
 
 fn deserialize_weeks<'de, D>(deserializer: D) -> Result<Vec<[NaiveDate; 5]>, D::Error>
 where
-    D: Deserializer<'de>
+    D: Deserializer<'de>,
 {
     let raw_weeks: Vec<Vec<String>> = Vec::deserialize(deserializer)?;
 
@@ -30,9 +31,12 @@ where
         .into_iter()
         .map(|week| {
             if week.len() != 5 {
-                return Err(de::Error::invalid_length(week.len(), &"expected 5 dates per week"));
+                return Err(de::Error::invalid_length(
+                    week.len(),
+                    &"expected 5 dates per week",
+                ));
             }
-            let mut arr = [NaiveDate::from_ymd_opt(1970,1,1).unwrap(); 5]; // temporary init
+            let mut arr = [NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(); 5]; // temporary init
             for (i, s) in week.into_iter().enumerate() {
                 arr[i] = deserialize_date(s.into_deserializer())?;
             }
@@ -43,111 +47,160 @@ where
 
 #[derive(Debug, Deserialize)]
 pub struct Subject {
-    name: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Teacher {
-    name: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Schedule {
     #[serde(deserialize_with = "deserialize_weeks")]
-    weeks: Vec<[NaiveDate; 5]>,
-    subjects: HashMap<String, Subject>,
-    teachers: HashMap<String, Teacher>,
-    schedule: Vec<Class>,
+    pub weeks: Vec<[NaiveDate; 5]>,
+    pub subjects: HashMap<String, Subject>,
+    pub teachers: HashMap<String, Teacher>,
+    pub schedule: Vec<Class>,
 }
 
-pub fn schedule_to_ical(schedule: &Schedule, tz: &Tz) -> eyre::Result<VCalendar> {
-    let mut events = Vec::new();
-
-    for (week_index, week) in schedule.weeks.iter().enumerate() {
-        for (day_index, day) in week.iter().enumerate() {
-            let scheduled_weekday = Weekday::try_from(day_index as u8)?;
-            let real_weekday = day.weekday();
-
-            if scheduled_weekday != real_weekday {
-                warn!("Weekday mismatch on week {}, day {}: scheduled {}, real {}", week_index + 1, day_index + 1, scheduled_weekday, real_weekday);
-            }
-
-            for class in &schedule.schedule {
-                if class.weeks.is_some()
-                    && !class.weeks.as_ref().unwrap().happens_in_week(NonZero::new(week_index + 1)
-                    .ok_or_eyre("week number would be zero")?) {
-                    continue;
+impl Schedule {
+    pub fn get_day(&self, date: NaiveDate) -> eyre::Result<(NonZero<usize>, Weekday)> {
+        for (week_index, week) in self.weeks.iter().enumerate() {
+            for (day_index, day) in week.iter().enumerate() {
+                if *day == date {
+                    let weekday = Weekday::try_from(day_index as u8)?;
+                    return Ok((
+                        NonZero::new(week_index + 1).ok_or_eyre("week number would be zero")?,
+                        weekday,
+                    ));
                 }
-
-                if class.day != scheduled_weekday {
-                    continue;
-                }
-
-                let subject = schedule.subjects.get(&class.subject)
-                    .ok_or_else(|| eyre!("subject not found: {}", class.subject))?;
-                let teachers: Vec<String> = match &class.teachers {
-                    Some(teacher_ids) => teacher_ids.iter()
-                        .map(|id| {
-                            schedule.teachers.get(id)
-                                .map(|t| t.name.clone())
-                                .ok_or_else(|| eyre!("teacher not found: {}", id))
-                        })
-                        .collect::<Result<_, _>>()?,
-                    None => vec![],
-                };
-                let location = class.location.as_ref()
-                    .map(|loc| format!("{}/{}", loc.room, loc.building));
-
-                // TODO Better UID generation
-                let uid = format!(
-                    "{}-{}-{}-{}-{}",
-                    class.class_type.to_name(),
-                    class.subject.replace(" ", "_"),
-                    class.day,
-                    week_index,
-                    class.time.start.format("%H%M"),
-                );
-
-                let now = Local::now().with_timezone(tz);
-                let start = day.and_time(class.time.start).and_local_timezone(*tz).single()
-                    .ok_or_eyre("ambiguous or non-existent start time")?;
-                let end = day.and_time(class.time.end).and_local_timezone(*tz).single()
-                    .ok_or_eyre("ambiguous or non-existent end time")?;
-
-
-
-                let event = VEvent {
-                    uid,
-                    created: now,
-                    start,
-                    end,
-                    summary: format!("{} {}", class.class_type.to_emoji(), subject.name),
-                    description: format!(
-                        "{}\n{}",
-                        class.class_type.to_name(),
-                        teachers.join("\n"),
-                    ),
-                    location: location.unwrap_or_default(),
-                };
-
-                events.push(event);
             }
         }
+
+        Err(eyre!("date not found in schedule: {}", date))
     }
 
-    let cal = VCalendar {
-        prod_id: "-//TheChilliPL//Planner//PL".to_string(),
-        version: "2.0".to_string(),
-        events,
-    };
+    pub fn get_classes_on(
+        &self,
+        week_number: NonZero<usize>,
+        weekday: Weekday,
+    ) -> impl Iterator<Item = &Class> {
+        let classes = self
+            .schedule
+            .iter()
+            .filter(move |class| class.happens_on(week_number, weekday));
 
-    Ok(cal)
+        classes
+    }
+
+    pub fn to_ical(&self, tz: &Tz) -> eyre::Result<VCalendar> {
+        let mut events = Vec::new();
+
+        for (week_index, week) in self.weeks.iter().enumerate() {
+            for (day_index, day) in week.iter().enumerate() {
+                let scheduled_weekday = Weekday::try_from(day_index as u8)?;
+                let real_weekday = day.weekday();
+
+                if scheduled_weekday != real_weekday {
+                    warn!(
+                        "Weekday mismatch on week {}, day {}: scheduled {}, real {}",
+                        week_index + 1,
+                        day_index + 1,
+                        scheduled_weekday,
+                        real_weekday
+                    );
+                }
+
+                for class in &self.schedule {
+                    if class.weeks.is_some()
+                        && !class.weeks.as_ref().unwrap().happens_in_week(
+                            NonZero::new(week_index + 1).ok_or_eyre("week number would be zero")?,
+                        )
+                    {
+                        continue;
+                    }
+
+                    if class.day != scheduled_weekday {
+                        continue;
+                    }
+
+                    let subject = self
+                        .subjects
+                        .get(&class.subject)
+                        .ok_or_else(|| eyre!("subject not found: {}", class.subject))?;
+                    let teachers: Vec<String> = match &class.teachers {
+                        Some(teacher_ids) => teacher_ids
+                            .iter()
+                            .map(|id| {
+                                self.teachers
+                                    .get(id)
+                                    .map(|t| t.name.clone())
+                                    .ok_or_else(|| eyre!("teacher not found: {}", id))
+                            })
+                            .collect::<Result<_, _>>()?,
+                        None => vec![],
+                    };
+                    let location = class
+                        .location
+                        .as_ref()
+                        .map(|loc| format!("{}/{}", loc.room, loc.building));
+
+                    // TODO Better UID generation
+                    let uid = format!(
+                        "{}-{}-{}-{}-{}",
+                        class.class_type.to_name(),
+                        class.subject.replace(" ", "_"),
+                        class.day,
+                        week_index,
+                        class.time.start.format("%H%M"),
+                    );
+
+                    let now = Local::now().with_timezone(tz);
+                    let start = day
+                        .and_time(class.time.start)
+                        .and_local_timezone(*tz)
+                        .single()
+                        .ok_or_eyre("ambiguous or non-existent start time")?;
+                    let end = day
+                        .and_time(class.time.end)
+                        .and_local_timezone(*tz)
+                        .single()
+                        .ok_or_eyre("ambiguous or non-existent end time")?;
+
+                    let event = VEvent {
+                        uid,
+                        created: now,
+                        start,
+                        end,
+                        summary: format!("{} {}", class.class_type.to_emoji(), subject.name),
+                        description: format!(
+                            "{}\n{}",
+                            class.class_type.to_name(),
+                            teachers.join("\n"),
+                        ),
+                        location: location.unwrap_or_default(),
+                    };
+
+                    events.push(event);
+                }
+            }
+        }
+
+        let cal = VCalendar {
+            prod_id: "-//TheChilliPL//Planner//PL".to_string(),
+            version: "2.0".to_string(),
+            events,
+        };
+
+        Ok(cal)
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use serde_json::json;
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn deserialize_schedule() {
@@ -172,7 +225,10 @@ mod test {
         let schedule: Schedule = serde_json::from_value(json).unwrap();
 
         assert_eq!(schedule.weeks.len(), 1);
-        assert_eq!(schedule.weeks[0][0], NaiveDate::from_ymd_opt(2025,01,01).unwrap());
+        assert_eq!(
+            schedule.weeks[0][0],
+            NaiveDate::from_ymd_opt(2025, 01, 01).unwrap()
+        );
         assert_eq!(schedule.subjects.len(), 1);
         assert_eq!(schedule.subjects.get("subj").unwrap().name, "Subject");
         assert_eq!(schedule.teachers.get("teacher1").unwrap().name, "Teacher");

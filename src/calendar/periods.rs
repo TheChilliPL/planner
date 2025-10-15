@@ -1,8 +1,8 @@
-use std::fmt::Formatter;
 use chrono::{DateTime, MappedLocalTime, NaiveDate, NaiveTime, TimeDelta};
 use chrono_tz::Tz;
-use serde::{de, Deserialize, Deserializer};
 use serde::de::{Error, Visitor};
+use serde::{de, Deserialize, Deserializer};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NaiveTimePeriod {
@@ -14,7 +14,7 @@ impl NaiveTimePeriod {
     fn new(start: NaiveTime, end: NaiveTime) -> Self {
         Self { start, end }
     }
-    
+
     pub(crate) fn from_hm_hm(start_hour: u32, start_min: u32, end_hour: u32, end_min: u32) -> Self {
         Self::new(
             NaiveTime::from_hms_opt(start_hour, start_min, 0).unwrap(),
@@ -25,7 +25,7 @@ impl NaiveTimePeriod {
     fn get_duration(&self) -> TimeDelta {
         self.end.signed_duration_since(self.start)
     }
-    
+
     fn on_day(&self, day: NaiveDate, tz: Tz) -> Option<(DateTime<Tz>, DateTime<Tz>)> {
         let start = day.and_time(self.start).and_local_timezone(tz);
         let end = day.and_time(self.end).and_local_timezone(tz);
@@ -35,6 +35,12 @@ impl NaiveTimePeriod {
             (MLT::Single(start), MLT::Single(end)) => Some((start, end)),
             _ => None,
         }
+    }
+}
+
+impl Display for NaiveTimePeriod {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("{}-{}", self.start.format("%H:%M"), self.end.format("%H:%M")))
     }
 }
 
@@ -67,17 +73,21 @@ impl<'de> Deserialize<'de> for NaiveTimePeriod {
                 if parts.next().is_some() {
                     return Err(E::invalid_value(
                         de::Unexpected::Str(start_str),
-                        &"too many '-' separators"
-                    ))
+                        &"too many '-' separators",
+                    ));
                 }
 
                 let start = NaiveTime::parse_from_str(start_str.trim(), "%H:%M")
                     .or_else(|_| NaiveTime::parse_from_str(start_str.trim(), "%-H:%M"))
-                    .map_err(|_| E::invalid_value(de::Unexpected::Str(start_str), &"invalid start time"))?;
+                    .map_err(|_| {
+                        E::invalid_value(de::Unexpected::Str(start_str), &"invalid start time")
+                    })?;
 
                 let end = NaiveTime::parse_from_str(end_str.trim(), "%H:%M")
                     .or_else(|_| NaiveTime::parse_from_str(end_str.trim(), "%-H:%M"))
-                    .map_err(|_| E::invalid_value(de::Unexpected::Str(end_str), &"invalid end time"))?;
+                    .map_err(|_| {
+                        E::invalid_value(de::Unexpected::Str(end_str), &"invalid end time")
+                    })?;
 
                 Ok(NaiveTimePeriod::new(start, end))
             }
