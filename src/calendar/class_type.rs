@@ -1,4 +1,4 @@
-use qolor::color::{BasicColor, Color};
+use qolor::color::BasicColor;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]

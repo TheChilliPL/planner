@@ -28,8 +28,13 @@
           "name": {
             "type": "string",
             "description": "The name of the subject"
+          },
+          "short": {
+            "type": "string",
+            "description": "Short name of the subject, visible in event titles"
           }
-        }
+        },
+        "required": ["name"]
       },
       "description": "Defines the subjects. The key is considered to be the subject ID."
     },

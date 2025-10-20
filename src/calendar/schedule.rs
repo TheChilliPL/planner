@@ -9,7 +9,6 @@ use log::warn;
 use serde::de::IntoDeserializer;
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
-use std::iter;
 use std::num::NonZero;
 
 fn deserialize_date<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
@@ -48,6 +47,13 @@ where
 #[derive(Debug, Deserialize)]
 pub struct Subject {
     pub name: String,
+    pub short: Option<String>,
+}
+
+impl Subject {
+    pub fn get_short_or_name(&self) -> &str {
+        self.short.as_ref().unwrap_or(&self.name)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,10 +179,11 @@ impl Schedule {
                         created: now,
                         start,
                         end,
-                        summary: format!("{} {}", class.class_type.to_emoji(), subject.name),
+                        summary: format!("{} {}", class.class_type.to_emoji(), subject.get_short_or_name()),
                         description: format!(
-                            "{}\n{}",
+                            "{}: {}\n{}",
                             class.class_type.to_name(),
+                            subject.name,
                             teachers.join("\n"),
                         ),
                         location: location.unwrap_or_default(),

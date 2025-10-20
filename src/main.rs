@@ -3,11 +3,11 @@ use crate::ical::SerializeToICal;
 use clap::{Parser, Subcommand};
 use eyre::OptionExt;
 use log::{debug, info, LevelFilter};
-use qolor::color::BasicColor::{Black, Green};
+use qolor::color::BasicColor::Green;
 use qolor::shorthands::Formattable;
 use std::fs::File;
 use std::path::PathBuf;
-use chrono::{DateTime, Local};
+use chrono::Local;
 use crate::time::timeext::TimeDeltaExt;
 
 mod calendar;
@@ -53,7 +53,7 @@ fn main() -> eyre::Result<()> {
 
     match args.command {
         Commands::Show { path } => {
-            let today = chrono::Local::now().date_naive();
+            let today = Local::now().date_naive();
 
             let schedule: Schedule = serde_json::from_reader(File::open(&path)?)?;
 
@@ -83,7 +83,7 @@ fn main() -> eyre::Result<()> {
                     .get(&class.subject)
                     .ok_or_eyre("subject name not found")?;
 
-                let mut first_line = format!("{} {}\n", class.class_type.to_emoji(), subject.name)
+                let mut first_line = format!("{} {}\n", class.class_type.to_emoji(), subject.get_short_or_name())
                     .fg(class.class_type.to_color());
 
                 if class.time.end < time_now {
@@ -121,7 +121,7 @@ fn main() -> eyre::Result<()> {
 
             info!("Schedule: {:?}", schedule);
 
-            let timezone = crate::time::timezones::try_get_local_timezone()?;
+            let timezone = time::timezones::try_get_local_timezone()?;
             debug!("Using local timezone: {}", timezone);
 
             let ical = schedule.to_ical(&timezone)?;
