@@ -7,6 +7,8 @@ use qolor::color::BasicColor::{Black, Green};
 use qolor::shorthands::Formattable;
 use std::fs::File;
 use std::path::PathBuf;
+use chrono::{DateTime, Local};
+use crate::time::timeext::TimeDeltaExt;
 
 mod calendar;
 mod ical;
@@ -64,26 +66,46 @@ fn main() -> eyre::Result<()> {
                     .to_ansi()
             );
 
-            let classes = schedule.get_classes_on(week_no, weekday);
+            let classes = schedule.get_classes_on(week_no, weekday).collect::<Vec<_>>();
 
             println!(
                 "{}",
-                format!("You have {} classes today:", classes.count())
+                format!("You have {} classes today:", classes.len())
                     .dim()
                     .to_ansi()
             );
 
-            for class in schedule.get_classes_on(week_no, weekday) {
+            let time_now = Local::now().time();
+
+            for class in &classes {
                 let subject = schedule
                     .subjects
                     .get(&class.subject)
-                    .ok_or_eyre("subject name not found")?
-                    ;
+                    .ok_or_eyre("subject name not found")?;
+
+                let mut first_line = format!("{} {}\n", class.class_type.to_emoji(), subject.name)
+                    .fg(class.class_type.to_color());
+
+                if class.time.end < time_now {
+                    debug!("Class {} has already ended", subject.name);
+                    first_line = first_line.strike();
+                } else if class.time.start <= time_now {
+                    first_line = first_line.bold();
+                }
+
+                let text = first_line
+                    + format!("    {}", class.time).dim();
+
+                println!("{}", text.to_ansi());
+            }
+
+            let class_end_at = classes.last().unwrap().time.end;
+
+            if class_end_at > time_now {
+                let remaining = class_end_at - time_now;
                 println!(
-                    "{} {}\n    {}",
-                    class.class_type.to_emoji(),
-                    subject.name.bold().to_ansi(),
-                    class.time
+                    "{} until the end!",
+                    remaining.to_human_readable().bold().to_ansi()
                 );
             }
         }

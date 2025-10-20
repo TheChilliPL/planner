@@ -1,3 +1,4 @@
+use qolor::color::{BasicColor, Color};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -34,6 +35,18 @@ impl ClassType {
             ClassType::PE => "🏃",
             ClassType::Languages => "🗣️",
             ClassType::Project => "🛠️",
+        }
+    }
+
+    pub fn to_color(self) -> BasicColor {
+        match self {
+            ClassType::Lecture => BasicColor::Magenta,
+            ClassType::Lab => BasicColor::BrightGreen,
+            ClassType::Exercise => BasicColor::BrightRed,
+            ClassType::Seminar => BasicColor::Yellow,
+            ClassType::PE => BasicColor::Red,
+            ClassType::Languages => BasicColor::Cyan,
+            ClassType::Project => BasicColor::White,
         }
     }
 }
