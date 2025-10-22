@@ -68,6 +68,11 @@ fn main() -> eyre::Result<()> {
 
             let classes = schedule.get_classes_on(week_no, weekday).collect::<Vec<_>>();
 
+            if classes.is_empty() {
+                println!("{}", "You have no classes today!".dim().to_ansi());
+                return Ok(());
+            }
+
             println!(
                 "{}",
                 format!("You have {} classes today:", classes.len())
@@ -76,6 +81,16 @@ fn main() -> eyre::Result<()> {
             );
 
             let time_now = Local::now().time();
+
+            let classes_start_at = classes.first().unwrap().time.start;
+
+            if classes_start_at > time_now {
+                let remaining = classes_start_at - time_now;
+                println!(
+                    "{} until the first class!",
+                    remaining.to_human_readable().bold().to_ansi()
+                );
+            }
 
             for class in &classes {
                 let subject = schedule
