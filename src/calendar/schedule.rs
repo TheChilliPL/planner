@@ -45,9 +45,12 @@ where
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Subject {
     pub name: String,
     pub short: Option<String>,
+    pub subject_url: Option<String>,
+    pub notes_url: Option<String>,
 }
 
 impl Subject {
@@ -57,8 +60,10 @@ impl Subject {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Teacher {
     pub name: String,
+    pub profile_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

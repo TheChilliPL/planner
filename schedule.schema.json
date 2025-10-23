@@ -27,11 +27,19 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the subject"
+            "description": "The name of the subject."
           },
           "short": {
             "type": "string",
-            "description": "Short name of the subject, visible in event titles"
+            "description": "Short name of the subject, visible in event titles."
+          },
+          "subjectUrl": {
+            "$ref": "#/$defs/url",
+            "description": "URL to the subject's main page."
+          },
+          "notesUrl": {
+            "$ref": "#/$defs/url",
+            "description": "URL to the subject's notes."
           }
         },
         "required": ["name"]
@@ -46,6 +54,15 @@
           "name": {
             "type": "string",
             "description": "Name of the teacher, including any titles."
+          },
+          "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Email address of the teacher."
+          },
+          "profileUrl": {
+            "$ref": "#/$defs/url",
+            "description": "URL to the teacher's profile page."
           }
         }
       },
@@ -153,6 +170,11 @@
     "timePeriod": {
       "type": "string",
       "pattern": "^\\d{1,2}:\\d{2}-\\d{1,2}:\\d{2}$"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[a-z-]+://"
     }
   }
 }
