@@ -152,10 +152,13 @@ impl Schedule {
                             .collect::<Result<_, _>>()?,
                         None => vec![],
                     };
-                    let location = class
-                        .location
-                        .as_ref()
-                        .map(|loc| format!("{}/{}", loc.room, loc.building));
+                    let location = match &class.location {
+                        Some(crate::calendar::class::Location::Offline { building, room }) => {
+                            Some(format!("{}/{}", room, building))
+                        }
+                        Some(crate::calendar::class::Location::Online) => Some("Online".to_string()),
+                        None => None,
+                    };
 
                     // TODO Better UID generation
                     let uid = format!(

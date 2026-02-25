@@ -25,9 +25,23 @@ enum WeekdayDef {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-pub struct Location {
-    pub building: String,
-    pub room: String,
+#[serde(untagged)]
+pub enum Location {
+    Offline { building: String, room: String },
+    #[serde(deserialize_with = "deserialize_online")]
+    Online,
+}
+
+fn deserialize_online<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s == "online" {
+        Ok(())
+    } else {
+        Err(serde::de::Error::custom("expected \"online\""))
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,11 +98,26 @@ mod tests {
         assert_eq!(class.time, NaiveTimePeriod::from_hm_hm(9, 30, 11, 0));
         assert_eq!(
             class.location,
-            Some(Location {
-                building: "A".into(),
-                room: "123".into()
+            Some(Location::Offline {
+                building: "A".to_string(),
+                room: "123".to_string()
             })
         );
         assert_eq!(class.teachers, Some(vec!["teacher1".into()]));
+    }
+
+    #[test]
+    fn deserialize_class_online() {
+        let json = json!({
+            "subject": "subj",
+            "type": "lecture",
+            "day": "wednesday",
+            "time": "9:30-11:00",
+            "location": "online"
+        });
+
+        let class = serde_json::from_value::<Class>(json).unwrap();
+
+        assert_eq!(class.location, Some(Location::Online));
     }
 }

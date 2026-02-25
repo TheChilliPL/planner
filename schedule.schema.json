@@ -112,6 +112,10 @@
                   }
                 },
                 "required": ["building", "room"]
+              },
+              {
+                "type": "string",
+                "enum": ["online"]
               }
             ],
             "description": "The location where the class happens."
