@@ -144,6 +144,14 @@
                 "enum": ["all", "odd", "even"],
                 "default": "all",
                 "description": "Whether the class happens every week, only on odd weeks, or only on even weeks."
+              },
+              "only": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "description": "The week number (1-based) when the class happens."
+                },
+                "description": "If provided, only the specified weeks will be considered."
               }
             }
           }

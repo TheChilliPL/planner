@@ -41,10 +41,15 @@ pub struct Weeks {
     to: Option<NonZero<usize>>,
     #[serde(default)]
     parity: WeekParity,
+    only: Option<Vec<NonZero<usize>>>,
 }
 
 impl Weeks {
     pub fn happens_in_week(&self, week: NonZero<usize>) -> bool {
+        if self.only.is_some() && !self.only.as_ref().unwrap().contains(&week) {
+            return false;
+        }
+
         if self.from.is_some() && self.from.unwrap() > week {
             return false;
         }
@@ -92,6 +97,7 @@ mod tests {
                 from: Some(NonZero::new(5).unwrap()),
                 to: Some(NonZero::new(10).unwrap()),
                 parity: WeekParity::Odd,
+                only: None,
             }
         );
 
@@ -101,5 +107,43 @@ mod tests {
             serde_json::from_value::<Weeks>(json2).unwrap(),
             Default::default()
         );
+    }
+
+    #[test]
+    fn happens_in_week() {
+        let weeks = Weeks {
+            from: Some(NonZero::new(1).unwrap()),
+            to: Some(NonZero::new(5).unwrap()),
+            parity: WeekParity::All,
+            only: None,
+        };
+
+        assert!(weeks.happens_in_week(NonZero::new(1).unwrap()));
+        assert!(weeks.happens_in_week(NonZero::new(5).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(6).unwrap()));
+
+        let weeks = Weeks {
+            only: Some(vec![NonZero::new(1).unwrap(), NonZero::new(3).unwrap()]),
+            ..Default::default()
+        };
+
+        assert!(weeks.happens_in_week(NonZero::new(1).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(2).unwrap()));
+        assert!(weeks.happens_in_week(NonZero::new(3).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(4).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(5).unwrap()));
+
+        let weeks = Weeks {
+            from: Some(NonZero::new(1).unwrap()),
+            to: Some(NonZero::new(5).unwrap()),
+            parity: WeekParity::Odd,
+            only: None,
+        };
+
+        assert!(weeks.happens_in_week(NonZero::new(1).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(2).unwrap()));
+        assert!(weeks.happens_in_week(NonZero::new(3).unwrap()));
+        assert!(!weeks.happens_in_week(NonZero::new(4).unwrap()));
+        assert!(weeks.happens_in_week(NonZero::new(5).unwrap()));
     }
 }
