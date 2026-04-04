@@ -1,6 +1,6 @@
 use crate::calendar::class::Class;
 use crate::ical::vcalendar::VCalendar;
-use crate::ical::vevent::VEvent;
+use crate::ical::vevent::{EventTime, VEvent};
 use chrono::{Datelike, Local};
 use chrono::{NaiveDate, Weekday};
 use chrono_tz::Tz;
@@ -106,12 +106,17 @@ impl Schedule {
     }
 
     pub fn to_ical(&self, tz: &Tz) -> eyre::Result<VCalendar> {
-        let mut events = Vec::new();
+        let mut events = Vec::with_capacity(64);
 
         for (week_index, week) in self.weeks.iter().enumerate() {
             for (day_index, day) in week.iter().enumerate() {
                 let scheduled_weekday = Weekday::try_from(day_index as u8)?;
                 let real_weekday = day.weekday();
+
+                let now = Local::now().with_timezone(tz);
+
+                // Generate all-day event
+                let mut event_name = format!("{} of week {}", scheduled_weekday, week_index + 1);
 
                 if scheduled_weekday != real_weekday {
                     warn!(
@@ -121,6 +126,20 @@ impl Schedule {
                         scheduled_weekday,
                         real_weekday
                     );
+                    event_name = event_name.to_uppercase();
+                }
+
+                {
+                    let event = VEvent {
+                        uid: format!("w{}-d{}", week_index + 1, day_index + 1),
+                        created: now,
+                        time: EventTime::FullDay(*day),
+                        summary: event_name,
+                        description: None,
+                        location: None,
+                    };
+
+                    events.push(event);
                 }
 
                 for class in &self.schedule {
@@ -170,7 +189,6 @@ impl Schedule {
                         class.time.start.format("%H%M"),
                     );
 
-                    let now = Local::now().with_timezone(tz);
                     let start = day
                         .and_time(class.time.start)
                         .and_local_timezone(*tz)
@@ -185,16 +203,15 @@ impl Schedule {
                     let event = VEvent {
                         uid,
                         created: now,
-                        start,
-                        end,
+                        time: EventTime::Timed { start, end },
                         summary: format!("{} {}", class.class_type.to_emoji(), subject.get_short_or_name()),
-                        description: format!(
+                        description: Some(format!(
                             "{}: {}\n{}",
                             class.class_type.to_name(),
                             subject.name,
                             teachers.join("\n"),
-                        ),
-                        location: location.unwrap_or_default(),
+                        )),
+                        location: Some(location.unwrap_or_default()),
                     };
 
                     events.push(event);
