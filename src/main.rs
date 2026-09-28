@@ -1,13 +1,14 @@
 use crate::calendar::schedule::Schedule;
 use crate::ical::SerializeToICal;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use eyre::{eyre, OptionExt};
 use log::{debug, info, LevelFilter};
 use qolor::color::BasicColor::Green;
 use qolor::shorthands::Formattable;
-use std::fs::File;
+use std::fs::{read_to_string, File};
+use std::io::Read;
 use std::num::NonZero;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use chrono::{Local, NaiveDate, Weekday};
 use crate::time::timeext::TimeDeltaExt;
 
@@ -17,7 +18,7 @@ mod time;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
-struct Args {
+struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
@@ -26,9 +27,8 @@ struct Args {
 enum Commands {
     /// Shows the plan for the day.
     Show {
-        /// Path to the schedule .json file
-        #[arg(short, long, value_name = "SCHEDULE_PATH", env = "PLANNER_SCHEDULE_PATH")]
-        path: PathBuf,
+        #[command(flatten)]
+        input: ScheduleInput,
 
         /// The date to show.
         ///
@@ -43,15 +43,65 @@ enum Commands {
     },
     /// Generates an iCal (.ics) file of the specified schedule.
     Generate {
-        /// Path to the schedule .json file
-        #[arg(value_name = "SCHEDULE_PATH", env = "PLANNER_SCHEDULE_PATH")]
-        path: PathBuf,
+        #[command(flatten)]
+        input: ScheduleInput,
         /// Path at which the output .ics file will be saved.
         ///
         /// By default, uses the schedule .json path with .json replaced with `.ics`.
         #[arg(short, long, value_name = "OUTPUT_PATH")]
         output: Option<PathBuf>,
     },
+}
+
+#[derive(Args, Debug)]
+pub struct ScheduleInput {
+    /// Path to the schedule .json/.toml file.
+    #[arg(value_name = "SCHEDULE_PATH", env = "PLANNER_SCHEDULE_PATH")]
+    path: PathBuf,
+    /// Format of the schedule. By default, detected based on file extension.
+    #[arg(long, value_name = "SCHEDULE_FORMAT", env = "PLANNER_SCHEDULE_FORMAT")]
+    format: Option<ScheduleFormat>,
+}
+
+impl ScheduleInput {
+    pub fn effective_format(&self) -> eyre::Result<ScheduleFormat> {
+        self.format.map(Ok).unwrap_or_else(|| ScheduleFormat::from_path(&self.path))
+    }
+
+    pub fn read(&self) -> eyre::Result<Schedule> {
+        let format = self.effective_format()?;
+
+        let data = read_to_string(&self.path)?;
+
+        Ok(match format {
+            ScheduleFormat::Json => serde_json::from_str(&data)?,
+            ScheduleFormat::Toml => toml::from_str(&data)?,
+        })
+    }
+}
+
+#[derive(Copy, Clone, ValueEnum, Debug)]
+pub enum ScheduleFormat {
+    Json,
+    Toml,
+}
+
+impl ScheduleFormat {
+    pub fn from_path(path: impl AsRef<Path>) -> eyre::Result<ScheduleFormat> {
+        let ext = path.as_ref().extension().ok_or_eyre("no file extension")?
+            .to_str().ok_or_eyre("extension is not valid UTF-8")?;
+        Ok(Self::from_extension(ext).ok_or_eyre("unknown file extension format")?)
+    }
+
+    pub fn from_extension(ext: &str) -> Option<ScheduleFormat> {
+        if ext.eq_ignore_ascii_case("json") {
+            Some(ScheduleFormat::Json)
+        } else if ext.eq_ignore_ascii_case("toml") {
+            Some(ScheduleFormat::Toml)
+        } else {
+            None
+        }
+    }
 }
 
 fn date_to_triple(date: NaiveDate, schedule: &Schedule)
@@ -131,11 +181,11 @@ fn main() -> eyre::Result<()> {
         .parse_default_env()
         .init();
 
-    let args = Args::parse();
+    let args = Cli::parse();
 
     match args.command {
-        Commands::Show { path, date } => {
-            let schedule: Schedule = serde_json::from_reader(File::open(&path)?)?;
+        Commands::Show { input, date } => {
+            let schedule: Schedule = input.read()?;
 
             let (week_no, weekday, date) = match date {
                 Some(d) => parse_date(&d, &schedule),
@@ -218,15 +268,15 @@ fn main() -> eyre::Result<()> {
                 }
             }
         }
-        Commands::Generate { path, output } => {
+        Commands::Generate { input, output } => {
             let output = match output {
                 Some(path) => path,
-                None => path.with_extension("ics"),
+                None => input.path.with_extension("ics"),
             };
 
             debug!("Will be saving to {}", output.display());
 
-            let schedule: Schedule = serde_json::from_reader(File::open(&path)?)?;
+            let schedule: Schedule = input.read()?;
 
             info!("Schedule: {:?}", schedule);
 
