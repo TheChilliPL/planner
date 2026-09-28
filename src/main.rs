@@ -76,6 +76,7 @@ impl ScheduleInput {
         Ok(match format {
             ScheduleFormat::Json => serde_json::from_str(&data)?,
             ScheduleFormat::Toml => toml::from_str(&data)?,
+            ScheduleFormat::Yaml => yaml_serde::from_str(&data)?,
         })
     }
 }
@@ -84,6 +85,7 @@ impl ScheduleInput {
 pub enum ScheduleFormat {
     Json,
     Toml,
+    Yaml,
 }
 
 impl ScheduleFormat {
@@ -98,6 +100,8 @@ impl ScheduleFormat {
             Some(ScheduleFormat::Json)
         } else if ext.eq_ignore_ascii_case("toml") {
             Some(ScheduleFormat::Toml)
+        } else if ext.eq_ignore_ascii_case("yaml") {
+            Some(ScheduleFormat::Yaml)
         } else {
             None
         }
